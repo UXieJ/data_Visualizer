@@ -29,7 +29,6 @@ class UdpReceiver(QObject):
             self.parse_data(data)
 
     def parse_data(self, data):
-        # print("Data in parse_data:", len(data))
         try:
             frame_header = struct.unpack_from('>I', data, 0)[0]
             # Read frame length
@@ -49,33 +48,43 @@ class UdpReceiver(QObject):
             crc16 = struct.unpack_from('>H', data, crc16_offset)[0]
             self.results.append(frame_data)
             # with open('output.txt', 'w') as file:
+            self.grouped_data = {}
+
+            #To ensure that all data with the same circleNumber have been stored
+            currentCircleNumber = None
+
             for data in self.results:
                 offset = 0
                 previousCircleNumber = None
 
                 while offset < len(data):
                     circleNumber, angular, first_return_dist, first_return_amp = struct.unpack_from('>2I3s2s', data,
-                                                                                                    offset)                    # print("circleNumber, in dataParse.py dist", circleNumber, first_return_dist)
+                                                                                                    offset)
+                    # print("circleNumber, in dataParse.py dist", circleNumber, first_return_dist)
+        #instead of breaking the loop when the circleNumber changes, update the currentCircleNumber and conit
                     if previousCircleNumber is not None and circleNumber - previousCircleNumber != 0:
-                        break
-                    else:
-                        previousCircleNumber = circleNumber
-                        act_angular = (angular / math.pow(2, 25) / 72) * 360
-                        first_return_dist = int.from_bytes(first_return_dist, byteorder='big')
-                        first_return_amp = int.from_bytes(first_return_amp, byteorder='big')
-                        x = first_return_dist * math.cos(math.radians(act_angular)) * 0.0001
-                        y = first_return_dist * math.sin(math.radians(act_angular)) * 0.0001
-                        origin_x = 343  # replace with your desired origin
-                        origin_y = 253
-                        x = origin_x + x
-                        y = origin_y - y
-                        if circleNumber not in self.grouped_data:
-                            self.grouped_data[circleNumber] = []  # Initialize an empty list for this circleNumber
-                        self.grouped_data[circleNumber].append((act_angular, first_return_dist, first_return_amp, x, y))
+                        currentCircleNumber = circleNumber
+
+                    previousCircleNumber = circleNumber
+                    act_angular = (angular / math.pow(2, 25) / 72) * 360
+                    first_return_dist = int.from_bytes(first_return_dist, byteorder='big')
+                    first_return_amp = int.from_bytes(first_return_amp, byteorder='big')
+                    x = first_return_dist * math.cos(math.radians(act_angular)) * 0.0001
+                    y = first_return_dist * math.sin(math.radians(act_angular)) * 0.0001
+                    origin_x = 343  # replace with your desired origin
+                    origin_y = 253
+                    x = origin_x + x
+                    y = origin_y - y
+                    if circleNumber not in self.grouped_data:
+                        self.grouped_data[circleNumber] = []  # Initialize an empty list for this circleNumber
+                    self.grouped_data[circleNumber].append((act_angular, first_return_dist, first_return_amp, x, y))
 
                     offset += struct.calcsize('>2I3s2s')
+                    #there are two conditions checking below, one checks if currentCircleNumber has a value that is considered truthy in python
+                    if currentCircleNumber and currentCircleNumber != previousCircleNumber:
+                        print(f"Not all data for circleNumber {currentCircleNumber} has been processed!")
                     # The dataProcessed signal is emitted to notify other parts of the application that the data processing is complete.
-                    self.dataProcessed.emit()
+                self.dataProcessed.emit()
                 # self.write_grouped_data_to_file(grouped_data, 'output.txt')
                 self.results.clear()
 
