@@ -1,14 +1,11 @@
-from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale, QObject, QPoint, QRect, QThread, Signal, QPointF, QTimer, Qt)
-from utils_thread import parseNetThread
-from utils_thread import MyItem
+from PySide6.QtCore import (QThread)
+from PySide6.QtGui import QPainter
+from PySide6.QtWidgets import (QApplication, QGraphicsView, QGraphicsScene,
+                               QWidget)
 
-from dataParse import *
 import clientVisualization
-import queue
-
-from PySide6.QtWidgets import (QApplication, QGraphicsView, QHBoxLayout, QPushButton, QGraphicsScene,
-     QWidget)
-from PySide6.QtGui import QPainter, QPen, QColor
+from dataParse import *
+from utils_thread import *
 
 
 class MainBoss(QWidget, clientVisualization.Ui_gui):
@@ -17,18 +14,31 @@ class MainBoss(QWidget, clientVisualization.Ui_gui):
         QWidget.__init__(self)
         clientVisualization.Ui_gui.__init__(self)
         self.setupUi(self)
-        # Initialize the QGraphicsScene
-        self.scene = QGraphicsScene()
 
-        # Set the scene for the graphics vie
+        # Initialize the custom QGraphicsScene
+        self.scene = GridGraphicsScene(self)
+
+        self.graphicsView.setMouseTracking(True)
+
+        # Set the custom scene to the QGraphicsView
         self.graphicsView.setScene(self.scene)
+        width = 600
+        height = 490
+        #未设置场景边界矩形，QGraphicsScene将使用itemsBoundingRect()返回的所有项目的边界区域作为场景边界矩形。但是，itemsBoundingRect()是一个相对耗时的函数，
+        self.scene.setSceneRect(-width / 2, -height / 2, width, height)
+        # Set the scene for the graphics
+
+        self.paintPoint = MyItem([])
+        self.scene.addItem(self.paintPoint)
+        # self.centerItemInScene(self.paintPoint)
+
 
         # Optionally, set render hints for the view
         self.graphicsView.setRenderHint(QPainter.Antialiasing)
         self.points_buffer = {}
         self.connectButton.clicked.connect(self.udp_connect_click)
         self.cancelButton.clicked.connect(self.udp_disconnect_click)
-        # self.graphicsView.setDragMode(QGraphicsView.ScrollHandDrag)
+
         self.graphicsView.setViewportUpdateMode(QGraphicsView.BoundingRectViewportUpdate)
 
     def udp_connect_click(self):
@@ -51,15 +61,20 @@ class MainBoss(QWidget, clientVisualization.Ui_gui):
                 _, _, _, x, y = point
                 all_points.append((x, y))
                 #用链表list1能接x,y 然后就不需要additem
-                #self.scene.addEllipse(x - point_radius, y - point_radius, 2 * point_radius, 2 * point_radius, QPen(Qt.blue), QColor(Qt.blue))
-                # QTimer.singleShot(100, lambda: self.removeEllipse(ellipse_item))
-        self.paintPoint = MyItem(all_points)
-        self.paintPoint.setPos(0, 0)
-        self.scene.addItem(self.paintPoint)
+        # self.paintPoint = MyItem(all_points)
+        # self.paintPoint.setPos(0, 0)
+        # self.scene.addItem(self.paintPoint)
+        self.paintPoint.setPointList(all_points)
 
-    def removeEllipse(self, ellipse_item):
-        """Remove the specified ellipse from the scene."""
-        self.scene.removeItem(ellipse_item)
+        #Clear the list after adding the points to the scene
+        # all_points.clear()
+
+    def centerItemInScene(self, item):
+        item_center = item.center()
+        scene_rect = self.scene.sceneRect()
+        scene_center = QPointF(scene_rect.width() / 2, scene_rect.height() / 2)
+        offset = scene_center - item_center
+        item.setPos(item.pos() + offset)
 
     def parseData(self):
         self.udp_thread.start(priority=QThread.HighestPriority)

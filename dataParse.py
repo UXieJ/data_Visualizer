@@ -1,7 +1,8 @@
-import struct
 import math
+import struct
+
+from PySide6.QtCore import QObject, Signal, Slot
 from PySide6.QtNetwork import QUdpSocket
-from PySide6.QtCore import QObject, Signal, Slot, QByteArray
 
 
 class UdpReceiver(QObject):
@@ -69,12 +70,12 @@ class UdpReceiver(QObject):
                     act_angular = (angular / math.pow(2, 25) / 72) * 360
                     first_return_dist = int.from_bytes(first_return_dist, byteorder='big')
                     first_return_amp = int.from_bytes(first_return_amp, byteorder='big')
-                    x = first_return_dist * math.cos(math.radians(act_angular)) * 0.0001
-                    y = first_return_dist * math.sin(math.radians(act_angular)) * 0.0001
-                    origin_x = 343  # replace with your desired origin
-                    origin_y = 253
-                    x = origin_x + x
-                    y = origin_y - y
+                    x = first_return_dist * math.cos(math.radians(act_angular)) * 0.0005
+                    y = first_return_dist * math.sin(math.radians(act_angular)) * 0.0005
+                    # origin_x = 0  # replace with your desired origin
+                    # origin_y = 100
+                    # x = origin_x + x
+                    # y = origin_y - y
                     if circleNumber not in self.grouped_data:
                         self.grouped_data[circleNumber] = []  # Initialize an empty list for this circleNumber
                     self.grouped_data[circleNumber].append((act_angular, first_return_dist, first_return_amp, x, y))
