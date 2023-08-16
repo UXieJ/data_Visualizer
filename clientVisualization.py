@@ -63,7 +63,6 @@ class mouseGraphicsView(QGraphicsView):
         self.panning = False
         self.currentZoom = 1.0
 
-
     # def wheelEvent(self, event):
     #     zoom_factor = 1.2
     #     if event.angleDelta().y() > 0:  # Zoom in
@@ -72,8 +71,7 @@ class mouseGraphicsView(QGraphicsView):
     #     else:  # Zoom out
     #         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
     #         self.scale(1 / zoom_factor, 1 / zoom_factor)
-
-    def wheelEvent (self, event):
+    def wheelEvent(self, event):
         zoomInFactor = 1.2
         zoomOutFactor = 1/ zoomInFactor
         oldPos = self.mapToScene(event.position().toPoint())

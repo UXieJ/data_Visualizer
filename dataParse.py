@@ -77,8 +77,11 @@ class UdpReceiver(QObject):
                     # x = origin_x + x
                     # y = origin_y - y
                     if circleNumber not in self.grouped_data:
-                        self.grouped_data[circleNumber] = []  # Initialize an empty list for this circleNumber
-                    self.grouped_data[circleNumber].append((act_angular, first_return_dist, first_return_amp, x, y))
+                        self.grouped_data[circleNumber] = {"x": [], "y": [], "angular": [], "first_return_amp": []}  # Initialize an empty list for this circleNumber
+                    self.grouped_data[circleNumber]["x"].append(x)
+                    self.grouped_data[circleNumber]["y"].append(y)
+                    self.grouped_data[circleNumber]["angular"].append(act_angular)
+                    self.grouped_data[circleNumber]["first_return_amp"].append(first_return_amp)
 
                     offset += struct.calcsize('>2I3s2s')
                     #there are two conditions checking below, one checks if currentCircleNumber has a value that is considered truthy in python

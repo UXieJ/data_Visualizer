@@ -17,27 +17,26 @@ class parseNetThread(QThread):
 
 class MyItem(QGraphicsItem):
     #QGraphicScene is a container for QGrpahicsItem objects and it manages their layout and rendering
-    def __init__(self, points):
+    def __init__(self, x, y, data):
         super(MyItem, self).__init__()
-        self.points = points
+        self.x = x
+        self.y = y
+        self.data = data
+        self.setFlag(QGraphicsItem.ItemIsSelectable, True)
 
     # boundingRect函数返回item的边界矩形
     def boundingRect(self):
-        if not self.points:
-            return QRectF(-10, -10, 20, 20)
-        min_x = min([x for x, _ in self.points])
-        max_x = max([x for x, _ in self.points])
-        min_y = min([y for _, y in self.points])
-        max_y = max([y for _, y in self.points])
-        return QRectF(min_x, min_y, max_x - min_x, max_y - min_y)
+        return QRectF(self.x - 1, self.y - 1, 1.1, 1.1)
 
     def paint(self, painter, option, widget):
-        painter.setPen(QPen(Qt.blue))
-        for x, y in self.points:
-            painter.drawPoint(x, y)
+        painter.setPen(QPen(Qt.blue, 1))
+        painter.setBrush(Qt.blue)
+        #painter.drawPoint(self.x, self.y)
+        painter.drawRect(self.x - 1, self.y - 1, 1, 1)
 
     def mousePressEvent(self, event):
-        self.update()
+        print(self.data)  # Display data of the selected point
+        super(MyItem, self).mousePressEvent(event)
 
     def center(self):
         rect = self.boundingRect()
@@ -47,6 +46,9 @@ class MyItem(QGraphicsItem):
         self.points = points
         self.update()
 
+    def getData(self):
+        return self.x, self.y
+
 
 class GridGraphicsScene(QGraphicsScene):
     def __init__(self, parent=None):
@@ -55,7 +57,6 @@ class GridGraphicsScene(QGraphicsScene):
         self.grid_interval = 50
         self.grid_lines = []
         self.drawGrid()
-
 
 #background grid is automatically drawn when the scene is rendered ,when call the update method of the QGraphicsView that display the scene
     def drawBackground(self, painter: QPainter, rect: QRectF):
@@ -71,9 +72,11 @@ class GridGraphicsScene(QGraphicsScene):
         top = int(rect.top())
         bottom = int(rect.bottom())
 
-        transform = self.views()[0].transform()
-        scale_factor = transform.m11()  # Horizontal scaling factor
-        adjusted_grid_interval = self.grid_interval / scale_factor
+        # transform = self.views()[0].transform()
+        # scale_factor = transform.m11()  # Horizontal scaling factor
+        # adjusted_grid_interval = self.grid_interval / scale_factor
+
+        adjusted_grid_interval = 50
 
         x = left - left % adjusted_grid_interval
         while x < right:
@@ -98,5 +101,15 @@ class GridGraphicsScene(QGraphicsScene):
             self.removeItem(line)
         self.grid_lines.clear()
         self.drawGrid()
+
+    def mouseReleaseEvent(self, event):
+        print("222222")
+        items = self.selectedItems()
+        for item in items:
+            x,y = item.getData()
+            print("item x:", x, "y:", y)
+        super().mouseReleaseEvent(event)
+
+
 
 

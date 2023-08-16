@@ -28,14 +28,9 @@ class MainBoss(QWidget, clientVisualization.Ui_gui):
         self.scene.setSceneRect(-width / 2, -height / 2, width, height)
         # Set the scene for the graphics
 
-        self.paintPoint = MyItem([])
-        self.scene.addItem(self.paintPoint)
-        # self.centerItemInScene(self.paintPoint)
-
-
         # Optionally, set render hints for the view
         self.graphicsView.setRenderHint(QPainter.Antialiasing)
-        self.points_buffer = {}
+        self.currentItems = []
         self.connectButton.clicked.connect(self.udp_connect_click)
         self.cancelButton.clicked.connect(self.udp_disconnect_click)
 
@@ -53,20 +48,28 @@ class MainBoss(QWidget, clientVisualization.Ui_gui):
 
     def drawOnGraphicsScene(self):
         grouped_points = self.parse_udp.grouped_data
-        all_points = []
+
+        # Remove previous items from the scene
+        for item in self.currentItems:
+            self.scene.removeItem(item)
+        self.currentItems.clear()
 
         for circleNumber, points in grouped_points.items():
-            for point in points:
-                # act_angular, first_return_dist, first_return_amp, x, y = point
-                _, _, _, x, y = point
-                all_points.append((x, y))
-                #用链表list1能接x,y 然后就不需要additem
-        # self.paintPoint = MyItem(all_points)
-        # self.paintPoint.setPos(0, 0)
-        # self.scene.addItem(self.paintPoint)
-        self.paintPoint.setPointList(all_points)
-
-        #Clear the list after adding the points to the scene
+            x_values = points["x"]
+            y_values = points["y"]
+            amp_values = points["first_return_amp"]
+            angular_values = points["angular"]
+            for x, y, amp, angular in zip(x_values, y_values, amp_values, angular_values):
+                data = {
+                    "x": x,
+                    "y": y,
+                    "amp": amp,
+                    "angular": angular
+                }
+                pointItem = MyItem(x, y, data)
+                self.scene.addItem(pointItem)
+                self.currentItems.append(pointItem)
+                #Clear the list after adding the points to the scene
         # all_points.clear()
 
     def centerItemInScene(self, item):
