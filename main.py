@@ -31,6 +31,7 @@ class MainBoss(QWidget, clientVisualization.Ui_gui):
         # Optionally, set render hints for the view
         self.graphicsView.setRenderHint(QPainter.Antialiasing)
         self.currentItems = []
+        self.lastDrawnBuffer = {}
         self.connectButton.clicked.connect(self.udp_connect_click)
         self.cancelButton.clicked.connect(self.udp_disconnect_click)
 
@@ -45,32 +46,33 @@ class MainBoss(QWidget, clientVisualization.Ui_gui):
             self.parse_udp.dataProcessed.connect(self.drawOnGraphicsScene)
             # print("process data length: ", len(process_data.cal_xy))
 
-
     def drawOnGraphicsScene(self):
-        grouped_points = self.parse_udp.grouped_data
-
         # Remove previous items from the scene
-        for item in self.currentItems:
-            self.scene.removeItem(item)
-        self.currentItems.clear()
+        if self.parse_udp.previousBuffer != self.lastDrawnBuffer:
+            for item in self.currentItems:
+                self.scene.removeItem(item)
+            self.currentItems.clear()
+        # for circleNumber, data in self.parse_udp.previousBuffer.items():
+        #     print(f"Number of points for circleNumber {circleNumber}: {len(data['x'])}")
 
-        for circleNumber, points in grouped_points.items():
-            x_values = points["x"]
-            y_values = points["y"]
-            amp_values = points["first_return_amp"]
-            angular_values = points["angular"]
-            for x, y, amp, angular in zip(x_values, y_values, amp_values, angular_values):
-                data = {
-                    "x": x,
-                    "y": y,
-                    "amp": amp,
-                    "angular": angular
-                }
-                pointItem = MyItem(x, y, data)
-                self.scene.addItem(pointItem)
-                self.currentItems.append(pointItem)
-                #Clear the list after adding the points to the scene
-        # all_points.clear()
+            for circleNumber, points in self.parse_udp.previousBuffer.items():
+                x_values = points["x"]
+                y_values = points["y"]
+                amp_values = points["first_return_amp"]
+                angular_values = points["angular"]
+                for x, y, amp, angular in zip(x_values, y_values, amp_values, angular_values):
+                    data = {
+                        "x": x,
+                        "y": y,
+                        "amp": amp,
+                        "angular": angular
+                    }
+                    pointItem = MyItem(x, y, data)
+                    self.scene.addItem(pointItem)
+                    self.currentItems.append(pointItem)
+
+            # Update the last drawn buffer to the current previousBuffer
+            self.lastDrawnBuffer = self.parse_udp.previousBuffer.copy()
 
     def centerItemInScene(self, item):
         item_center = item.center()

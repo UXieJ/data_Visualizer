@@ -18,9 +18,16 @@ class UdpReceiver(QObject):
         self.grouped_data = {}
 
         test = self.udpSocket.bind(self.port)  # Bind to the address and port you want to listen on
+
+        self.currentBuffer = {}
+        self.previousBuffer = {}
+        self.currentCircleNo = None
+
         if test:
             print("bind success")
         self.udpSocket.readyRead.connect(self.handleReadyRead)
+        # udp itself won't exceed RAM, THE MAX size of UDP is 65607 bytes, consider fragmentation
+        # Consider using a larger buffer for the UDP socket if you're experiencing packet loss
 
     @Slot()
     def handleReadyRead(self):
@@ -49,50 +56,44 @@ class UdpReceiver(QObject):
             crc16 = struct.unpack_from('>H', data, crc16_offset)[0]
             self.results.append(frame_data)
             # with open('output.txt', 'w') as file:
-            self.grouped_data = {}
+            # self.grouped_data = {}
 
-            #To ensure that all data with the same circleNumber have been stored
-            currentCircleNumber = None
+            # To ensure that all data with the same circleNumber have been stored
 
             for data in self.results:
                 offset = 0
-                previousCircleNumber = None
 
                 while offset < len(data):
                     circleNumber, angular, first_return_dist, first_return_amp = struct.unpack_from('>2I3s2s', data,
                                                                                                     offset)
                     # print("circleNumber, in dataParse.py dist", circleNumber, first_return_dist)
-        #instead of breaking the loop when the circleNumber changes, update the currentCircleNumber and conit
-                    if previousCircleNumber is not None and circleNumber - previousCircleNumber != 0:
-                        currentCircleNumber = circleNumber
-
-                    previousCircleNumber = circleNumber
                     act_angular = (angular / math.pow(2, 25) / 72) * 360
                     first_return_dist = int.from_bytes(first_return_dist, byteorder='big')
                     first_return_amp = int.from_bytes(first_return_amp, byteorder='big')
                     x = first_return_dist * math.cos(math.radians(act_angular)) * 0.0005
                     y = first_return_dist * math.sin(math.radians(act_angular)) * 0.0005
-                    # origin_x = 0  # replace with your desired origin
-                    # origin_y = 100
-                    # x = origin_x + x
-                    # y = origin_y - y
-                    if circleNumber not in self.grouped_data:
-                        self.grouped_data[circleNumber] = {"x": [], "y": [], "angular": [], "first_return_amp": []}  # Initialize an empty list for this circleNumber
-                    self.grouped_data[circleNumber]["x"].append(x)
-                    self.grouped_data[circleNumber]["y"].append(y)
-                    self.grouped_data[circleNumber]["angular"].append(act_angular)
-                    self.grouped_data[circleNumber]["first_return_amp"].append(first_return_amp)
+                    if self.currentCircleNo is None:
+                        self.currentCircleNo = circleNumber
+
+                    elif self.currentCircleNo != circleNumber:
+                        self.previousBuffer = self.currentBuffer.copy()
+                        self.currentBuffer.clear()
+                        self.currentCircleNo = circleNumber
+
+                    # Continue filling the currentBuffer
+                    if circleNumber not in self.currentBuffer:
+                        self.currentBuffer[circleNumber] = {"x": [], "y": [], "angular": [], "first_return_amp": []}
+                    self.currentBuffer[circleNumber]["x"].append(x)
+                    self.currentBuffer[circleNumber]["y"].append(y)
+                    self.currentBuffer[circleNumber]["angular"].append(act_angular)
+                    self.currentBuffer[circleNumber]["first_return_amp"].append(first_return_amp)
 
                     offset += struct.calcsize('>2I3s2s')
-                    #there are two conditions checking below, one checks if currentCircleNumber has a value that is considered truthy in python
-                    if currentCircleNumber and currentCircleNumber != previousCircleNumber:
-                        print(f"Not all data for circleNumber {currentCircleNumber} has been processed!")
+
                     # The dataProcessed signal is emitted to notify other parts of the application that the data processing is complete.
                 self.dataProcessed.emit()
                 # self.write_grouped_data_to_file(grouped_data, 'output.txt')
                 self.results.clear()
-
-                return self.grouped_data
 
         except struct.error:
             print("Error unpacking data")
